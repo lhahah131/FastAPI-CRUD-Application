@@ -1,0 +1,21 @@
+services:
+  api:
+    build:
+      context: .
+      network: host
+    environment:
+      - DEBUG=true
+      - APP_ENV=development
+  nginx:
+    ports: !override
+      - "8080:80"
+  adminer:
+    image: adminer
+    profiles:
+      - debug 
+    ports:
+      - "8001:8080"
+    networks:
+      - backend
+    depends_on:
+      - db

@@ -88,3 +88,7 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Item CRUD API. Go to /docs to see the interactive documentation."}
+
+@app.get("/health")
+def health_check():
+    return {"message": "OK"}

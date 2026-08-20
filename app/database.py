@@ -1,19 +1,32 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-# For simplicity, we'll use SQLite. For production, use PostgreSQL!
-# Using a relative path for the SQLite file
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
+def get_database_url():
+    if os.getenv("DATABASE_URL"):
+        return os.getenv("DATABASE_URL")
+    
+    secret_path = os.getenv("DB_PASSWORD_FILE", "/run/secrets/db_password")
+    if os.path.exists(secret_path):
+        with open(secret_path, "r") as f:
+            password = f.read().strip()
+    else:
+        password = os.getenv("POSTGRES_PASSWORD", "1234")
 
-# `check_same_thread` is only needed for SQLite to work with FastAPI's async nature
+    user = os.getenv("POSTGRES_USER", "Composer")
+    host = os.getenv("POSTGRES_HOST", "db")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    db = os.getenv("POSTGRES_DB", "latihan")
+    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+
+SQLALCHEMY_DATABASE_URL = get_database_url()
+
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL
 )
 
-# Each instance of SessionLocal will be a database session
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for our ORM models
 Base = declarative_base()

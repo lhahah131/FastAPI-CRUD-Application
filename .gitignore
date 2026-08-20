@@ -12,8 +12,11 @@ env/
 *.db
 *.sqlite3
 
-# Environment variables
+# Environment variables and secrets
 .env
+db_password.txt
+*.secret
+*.pem
 
 # IDE
 .vscode/
