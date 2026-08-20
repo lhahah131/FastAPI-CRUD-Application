@@ -25,3 +25,5 @@ db_password.txt
 # OS
 .DS_Store
 Thumbs.db
+
+.env
