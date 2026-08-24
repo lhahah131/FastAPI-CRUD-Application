@@ -1,14 +1,23 @@
 services:
   api:
-    build:
-      context: .
-      network: host
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./app:/app/app:ro
     environment:
       - DEBUG=true
       - APP_ENV=development
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /app/app
+        - action: rebuild
+          path: ./requirements.txt
+
   nginx:
     ports: !override
       - "8080:80"
+
   adminer:
     image: adminer
     profiles:
@@ -18,4 +27,4 @@ services:
     networks:
       - backend
     depends_on:
-      - db
+      - db

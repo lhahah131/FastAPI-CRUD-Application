@@ -1,5 +1,12 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   api:
+    logging: *default-logging
     healthcheck:
       test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
       interval: 5s
@@ -7,7 +14,9 @@ services:
       retries: 5
       start_period: 10s
     build:
-      context: .    
+      context: .
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.12-slim}
     expose:
       - "8000"
     depends_on:
@@ -29,8 +38,12 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+      - seccomp=./seccomp-block/seccomp.json
     cap_drop:
       - ALL
+    cap_add:
+     - CHOWN
+
     networks:
       - frontend
       - backend
@@ -38,13 +51,28 @@ services:
     cpus: "0.50"
 
   nginx:
+    logging: *default-logging
     image: nginx:alpine
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     ports:
       - "${APP_PORT:-9000}:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
     restart: unless-stopped
     networks:
       - frontend
@@ -52,6 +80,7 @@ services:
     cpus: "0.25"
 
   db:
+    logging: *default-logging
     image: postgres:15-alpine
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-Composer} -d ${POSTGRES_DB:-latihan}" ]
@@ -69,6 +98,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     networks:
       - backend
     mem_limit: 768m
@@ -95,4 +125,5 @@ networks:
 
 volumes:
   db_data:
+
 

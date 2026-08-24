@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # Base schema with common attributes
 class ItemBase(BaseModel):
@@ -15,6 +15,4 @@ class ItemCreate(ItemBase):
 class Item(ItemBase):
     id: int
 
-    # This is crucial for converting the ORM object to this schema
-    class Config:
-        from_attributes = True  # Allows ORM mode (formerly 'orm_mode = True')
+    model_config = ConfigDict(from_attributes=True)

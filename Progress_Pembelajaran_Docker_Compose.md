@@ -108,7 +108,7 @@ Dan memahami perbedaan service normal dengan service tambahan seperti Adminer.
 
 # Fase 3 — Networking
 
-**Status: 🟡 SEBAGIAN — sekitar 75%**
+**Status: ✅ SUDAH — 100%**
 
 ## 3.1 Default Network
 
@@ -170,7 +170,7 @@ Sudah dilakukan pemeriksaan network dan troubleshooting DNS Docker/WSL.
 
 ## 3.4 Network Isolation
 
-**Status: 🟡 SEBAGIAN**
+**Status: ✅ SUDAH**
 
 Sudah memiliki:
 
@@ -179,19 +179,19 @@ backend:
   internal: true
 ```
 
-Namun final verification berikut masih perlu dilakukan:
+Final verification telah berhasil diuji:
 
 ```text
-Nginx → API       harus bisa
-API → DB          harus bisa
-Nginx → DB        harus tidak bisa
+Nginx → API       ✅ Berhasil (wget http://api:8000/health)
+API → DB          ✅ Berhasil (socket connect db:5432)
+Nginx → DB        🔒 Ditolak / Blocked (ping: bad address 'db')
 ```
 
 ---
 
 # Fase 4 — Storage
 
-**Status: 🟡 SEBAGIAN — sekitar 60%**
+**Status: ✅ SUDAH — 100%**
 
 ## 4.1 Named Volume
 
@@ -229,194 +229,69 @@ Sudah menggunakan read-only filesystem dan read-only bind mount.
 
 ## 4.4 Anonymous Volume
 
-**Status: ❌ BELUM**
+**Status: ✅ SUDAH**
 
-Belum dilakukan eksperimen khusus terhadap anonymous volume.
+Sudah memahami dan menguji anonymous volume menggunakan flag `-v <path>` serta inspeksi volume hash tanpa nama melalui `docker volume ls`.
 
 ---
 
 ## 4.5 Volume Lifecycle
 
-**Status: 🟡 SEBAGIAN**
+**Status: ✅ SUDAH**
 
-Sudah menggunakan:
+Sudah berhasil membandingkan dan membuktikan secara nyata:
 
-```bash
-docker compose down
-docker compose up
-```
-
-Tetapi eksperimen khusus untuk membandingkan persistence masih perlu dilakukan:
-
-```bash
-docker compose down
-docker compose up
-```
-
-vs:
-
-```bash
-docker compose down -v
-docker compose up
-```
-
-Fokus:
-
-- apakah data tetap ada;
-- kapan volume dihapus;
-- perbedaan container lifecycle dan volume lifecycle.
+1. **`docker compose down` + `docker compose up`**: Data database tetap aman dan persisten (Volume Lifecycle terpisah dari Container Lifecycle).
+2. **`docker compose down -v` + `docker compose up`**: Volume `db_data` ikut terhapus dan dibuat baru dari awal (tabel di database kembali reset menjadi `0 rows`).
 
 ---
 
 # Fase 5 — Container Lifecycle
 
-**Status: 🟡 SEBAGIAN — sekitar 60%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah digunakan:
+Sudah diuji dan dipahami secara sistematis:
 
-```text
-up
-down
-start
-stop
-restart
-exec
-run
-```
+- `docker compose create` vs `start` vs `run`
+- `docker compose stop` vs `down` (Container ID terbukti persisten saat stop/start)
+- `docker compose restart`
+- `docker compose exec`
+- `docker compose rm`
 
-Masih perlu eksplorasi khusus:
+Mental Map Lifecycle yang telah terbukti:
 
 ```text
-create
-rm
-```
-
-Serta memahami lifecycle secara sistematis:
-
-```text
-create
-   ↓
-start
-   ↓
-running
-   ↓
-stop
-   ↓
-start
-```
-
-dibanding:
-
-```text
-down
-   ↓
-container hilang
-   ↓
-up
-   ↓
-container baru
+create ──► start ──► running ──► stop ──► start (Container ID tetap sama)
+   ▲                                         │
+   └──────────────── down ◄──────────────────┘ (Container dimusnahkan)
 ```
 
 ---
 
 # Fase 6 — Build System
 
-**Status: 🟡 SEBAGIAN — sekitar 65%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah:
+Sudah dipahami dan dibuktikan secara praktik:
 
-- Dockerfile
-- `build`
-- `requirements.txt`
-- base image
-- `pip install`
-- build cache
-- `docker history`
-- image digest
-- image layer inspection
-
-Sudah dianalisis:
-
-```text
-python:3.12-slim
-        ↓
-apt
-        ↓
-pip
-        ↓
-application
-        ↓
-appuser
-```
-
-Masih perlu eksplorasi:
-
-```text
-build.args
-ARG
-cache behavior
-cache invalidation
-```
-
-Contoh:
-
-```dockerfile
-ARG PYTHON_VERSION=3.12
-```
-
-Compose:
-
-```yaml
-build:
-  args:
-    PYTHON_VERSION: "3.12"
-```
+- `ARG` di Dockerfile vs `build.args` di Docker Compose
+- Dynamic base image tagging via environment variable (`PYTHON_VERSION=3.12.8-slim`)
+- Build Cache Layering & Invalidation behavior
+- `requirements.txt` cache optimization
+- `docker history` & image layer inspection
 
 ---
 
 # Fase 7 — Health & Dependency
 
-**Status: 🟡 SEBAGIAN — sekitar 75%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah:
+Sudah diuji dan dibuktikan secara penuh:
 
-```yaml
-healthcheck:
-```
-
-dan:
-
-```yaml
-depends_on:
-  db:
-    condition: service_healthy
-```
-
-Sudah memahami:
-
-```text
-container started
-       ≠
-service ready
-       ≠
-application healthy
-```
-
-Masih perlu mencoba seluruh variasi:
-
-```text
-service_started
-service_healthy
-service_completed_successfully
-```
-
-Serta healthcheck untuk:
-
-```text
-DB
-API
-Nginx
-```
+- `healthcheck` aktif pada seluruh service: **DB** (`pg_isready`), **API** (`python urllib /health`), dan **Nginx** (`wget /health`).
+- `depends_on` dengan `condition: service_healthy` bertingkat: `nginx -> api -> db`.
+- Startup dependency chain terbukti berjalan tertib: DB Healthy -> API Healthy -> Nginx Healthy (Status: Up (healthy)).
+- Pemahaman perbedaan mendasar antara `service_started`, `service_healthy`, dan `service_completed_successfully`.
 
 ---
 
@@ -491,185 +366,139 @@ Sudah memahami perbedaan antara secret dan environment variable untuk credential
 
 # Fase 10 — Reverse Proxy & Application Architecture
 
-**Status: 🟡 SEBAGIAN — sekitar 60%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah:
+Sudah diimplementasikan dan diverifikasi secara penuh:
 
 ```text
-Client
-  ↓
-Nginx :8080
-  ↓
-FastAPI :8000
+Client ──► Nginx :8080 ──► upstream fastapi_backend (api:8000) ──► PostgreSQL :5432
 ```
 
-Sudah diuji menggunakan:
+Fitur Reverse Proxy yang aktif & teruji:
 
-```bash
-curl http://localhost:8080/health
-```
-
-dan seluruh CRUD API melalui Nginx.
-
-Masih perlu eksplorasi:
-
-- `upstream`
-- header forwarding
-- timeout
-- client body size
-- gzip/compression
-- caching
-- HTTPS/TLS
+- `upstream fastapi_backend` dengan `keepalive 32`
+- Header Forwarding (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`)
+- Proxy Timeouts (`proxy_connect_timeout 5s`, `proxy_read_timeout 10s`)
+- DoS Protection: `client_max_body_size 10M`
+- HTTP Compression: `gzip on` (JSON, CSS, JS)
+- Zero-Downtime Config Reload: `nginx -s reload`
 
 ---
 
-# Fase 11 — Database Integration
+# Fase 11 — Database Integration & Operations
 
-**Status: 🟡 SEBAGIAN — sekitar 60%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah:
+Sudah diuji dan dipahami secara sistematis:
 
-```text
-FastAPI
-   ↓
-SQLAlchemy
-   ↓
-PostgreSQL
-   ↓
-Docker volume
-```
-
-Sudah memahami/mencoba:
-
-- connection string
-- healthcheck
-- Docker Secret
-- persistent volume
-- API → PostgreSQL connectivity
-
-Masih perlu eksplorasi:
-
-- migrations
-- initialization scripts
-- backup
-- restore
-- connection pool
-
-Termasuk:
-
-```text
-docker-entrypoint-initdb.d/
-```
+- Automated Database Initialization via `./init-scripts:/docker-entrypoint-initdb.d:ro`
+- Connection String & Docker Secrets handling (`DB_PASSWORD_FILE`)
+- Persistent Named Volume (`db_data`)
+- Database Backup via `pg_dump` streaming: `docker compose exec -T db pg_dump -U Composer latihan > backup.sql`
+- Database Restore via `psql` piping: `cat backup.sql | docker compose exec -T db psql -U Composer -d latihan`
+- Schema creation & data validation (terverifikasi tabel items otomatis terisi `Default Laptop` & `Default Mouse`)
 
 ---
 
-# Fase 12 — Scaling
+# Fase 12 — Scaling & Load Balancing
 
-**Status: ❌ BELUM — 0%**
+**Status: ✅ SUDAH — 100%**
 
-Belum mencoba:
+Sudah diuji dan dibuktikan secara penuh:
 
-```bash
-docker compose up -d --scale api=3
-```
-
-Target arsitektur:
-
-```text
-             Nginx
-                │
-       ┌────────┼────────┐
-       ▼        ▼        ▼
-     API-1    API-2    API-3
-       │        │        │
-       └────────┼────────┘
-                ▼
-           PostgreSQL
-```
-
-Materi yang akan dipahami:
-
-- service replication;
-- stateless application;
-- load distribution;
-- hubungan scaling dengan networking.
+- Replikasi service dengan `docker compose up -d --scale api=3`
+- Arsitektur Reverse Proxy Load Balancer: Nginx mendistribusikan traffic ke 3 instance container backend (`api-1`, `api-2`, `api-3`)
+- Menggunakan Embedded Docker DNS Resolver (`127.0.0.11 valid=1s`) di Nginx
+- Terverifikasi request `curl /health` dijawab bergantian oleh ID container berbeda (`94501b...`, `e9e3c0...`, `1549b3...`)
+- Pemahaman konsep *Stateless Application* (seluruh replika API membaca dan menulis ke satu PostgreSQL shared database tanpa konflik)
 
 ---
 
 # Fase 13 — Observability
 
-**Status: 🟡 SEBAGIAN — sekitar 60%**
+**Status: ✅ SUDAH — 100%**
 
-Sudah:
+Sudah dipraktikkan:
 
 ```bash
 docker compose logs
 docker stats
 docker inspect
-```
-
-Sudah melihat:
-
-- service status;
-- health status;
-- resource usage;
-- container configuration.
-
-Belum dieksplorasi:
-
-```bash
 docker events
 ```
 
-Serta observability yang lebih sistematis.
+Materi yang dikuasai:
+
+- Service & container status inspection via `docker inspect` (state, health status, mounts, environment).
+- Container resource usage monitoring via `docker stats` (CPU, Memory, Network I/O, Block I/O).
+- Log Management & Rotation menggunakan YAML Anchor `x-logging: &default-logging` (`json-file`, `max-size: 10m`, `max-file: 3`) untuk mencegah disk exhaustion.
+- Advanced Log Filtering (`--tail`, `--timestamps`, `--since`).
+- Real-time engine & lifecycle events streaming via `docker events` (filter event, type, format custom template).
 
 ---
 
 # Fase 14 — Compose untuk Development
 
-**Status: ❌ BELUM — 0%**
+**Status: ✅ SUDAH — 100%**
 
-Belum membuat workflow development penuh:
+Sudah dipraktikkan & terbukti:
 
 ```text
-VS Code
-   ↓
-source code host
-   ↓
-bind mount
-   ↓
-FastAPI container
-   ↓
-uvicorn --reload
+Host Editor (main.py)
+       ↓
+Live Bind Mount (./app:/app/app:ro)
+       ↓
+Uvicorn File Watcher (--reload)
+       ↓
+Instant Container Update (tanpa rebuild!)
 ```
 
-Target:
+Materi yang dikuasai:
 
-- source code host langsung terlihat di container;
-- hot reload;
-- development-specific Compose configuration.
+- Pemisahan environment production (`Dockerfile` build copy) vs development (`compose.dev.yaml` bind-mount).
+- Eksekusi dynamic command override `uvicorn app.main:app --reload`.
+- Konfigurasi `develop.watch` (Docker Compose Watch) untuk otomatisasi file sync & dependency rebuild.
+- Terverifikasi live: modifikasi return JSON endpoint `/health` langsung terbaca pada request `curl http://localhost:8080/health` tanpa restart container.
 
 ---
 
 # Fase 15 — Compose Specification
 
-**Status: ❌ BELUM — 0%**
+**Status: ✅ SUDAH — 100%**
 
-Belum melakukan eksplorasi sistematis terhadap:
+Elemen-elemen spesifikasi Compose yang sudah dipraktikkan:
 
-```text
-services
-networks
-volumes
-configs
-secrets
-profiles
-extends
-include
-develop
-```
+- `services` (build, image, command, expose, ports, depends_on, healthcheck, restart, environment, secrets, security_opt, cap_drop, cap_add, read_only, tmpfs, mem_limit, cpus, logging)
+- `networks` (custom bridge, internal isolation, driver)
+- `volumes` (named volume, bind mount, read-only flag `:ro`)
+- `secrets` (file-based secret mounting ke `/run/secrets/`)
+- `profiles` (debug services seperti Adminer)
+- `develop` (`watch: sync & rebuild`)
+- YAML Anchors & Extension Fields (`x-logging: &default-logging`, merge override)
 
-Fase ini dilakukan setelah cukup banyak praktik agar syntax dipahami berdasarkan kebutuhan nyata.
+---
+
+# Fase Tambahan — Container Runtime Security (Hardening)
+
+**Status: ✅ SUDAH — 100%**
+
+Materi keamanan runtime yang telah dibuktikan secara empiris:
+
+1. **Linux Capabilities (`cap_drop` & `cap_add`)**:
+   - Menghapus semua hak istimewa kernel dengan `cap_drop: ALL`.
+   - Terbukti: Perintah `chown` gagal (`Operation not permitted`) saat capabilities dicabut.
+   - Selective capability: Menambahkan kembali `CHOWN`, `NET_BIND_SERVICE`, `SETUID`, `SETGID` hanya pada service yang membutuhkan.
+
+2. **Seccomp (Secure Computing Mode)**:
+   - Memfilter System Calls (syscall) di level kernel Linux.
+   - Membuat dan menguji custom seccomp profile JSON (`./seccomp-block/seccomp.json`).
+   - Terbukti: Syscall `mkdir` dan `mkdirat` diblokir (`SCMP_ACT_ERRNO`), mencegah pembuatan direktori meskipun sebagai `root` dan filesystem writable.
+   - Integrasi ke Compose via `security_opt: [seccomp=./seccomp-block/seccomp.json]`.
+
+3. **Kernel Protection / AppArmor Masked Paths**:
+   - Membatasi modifikasi kernel runtime host.
+   - Terbukti: Modifikasi `/proc/sys/kernel/sysrq` ditolak (`Read-only file system`).
+   - Mengunci hak eskalasi dengan `security_opt: [no-new-privileges:true]`.
 
 ---
 
@@ -678,29 +507,34 @@ Fase ini dilakukan setelah cukup banyak praktik agar syntax dipahami berdasarkan
 ```text
 FASE 1   ████████████████████ 100% ✅
 FASE 2   ████████████████████ 100% ✅
-FASE 3   ███████████████░░░░░  75% 🟡
-FASE 4   ████████████░░░░░░░░  60% 🟡
-FASE 5   ████████████░░░░░░░░  60% 🟡
-FASE 6   █████████████░░░░░░░  65% 🟡
-FASE 7   ███████████████░░░░░  75% 🟡
+FASE 3   ████████████████████ 100% ✅
+FASE 4   ████████████████████ 100% ✅
+FASE 5   ████████████████████ 100% ✅
+FASE 6   ████████████████████ 100% ✅
+FASE 7   ████████████████████ 100% ✅
 FASE 8   ████████████████████ 100% ✅
-FASE 9   ██████████████████░░  90% 🟢
-FASE 10  ████████████░░░░░░░░  60% 🟡
-FASE 11  ████████████░░░░░░░░  60% 🟡
-FASE 12  ░░░░░░░░░░░░░░░░░░░░   0% ❌
-FASE 13  ████████████░░░░░░░░  60% 🟡
-FASE 14  ░░░░░░░░░░░░░░░░░░░░   0% ❌
-FASE 15  ░░░░░░░░░░░░░░░░░░░░   0% ❌
+FASE 9   ████████████████████ 100% ✅
+FASE 10  ████████████████████ 100% ✅
+FASE 11  ████████████████████ 100% ✅
+FASE 12  ████████████████████ 100% ✅
+FASE 13  ████████████████████ 100% ✅
+FASE 14  ████████████████████ 100% ✅
+FASE 15  ████████████████████ 100% ✅
+RUNTIME  ████████████████████ 100% ✅
 ```
 
 ## Posisi Sekarang
 
-Fokus aktif:
+Docker Compose Core, Specification, dan Runtime Security telah selesai 100% dengan bukti eksperimen empiris. Siap diterapkan ke project nyata.
 
 ```text
-Fase 3 — Networking
+Container Runtime Security & DevSecOps
         ↓
-3.4 Network Isolation
+1. Linux Capabilities deep-dive (cap_drop vs cap_add)
+2. Seccomp & System Call filtering
+3. Container Escape & Docker Socket security
+4. Minimalist/Distroless Image & Digest Pinning
+5. CI/CD Security Pipeline
 ```
 
 Setelah itu kembali mengikuti roadmap:

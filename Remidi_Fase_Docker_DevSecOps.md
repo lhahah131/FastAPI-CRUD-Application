@@ -13,11 +13,22 @@ sebelum masuk CI/CD.
   Compose                                         profiles, build/up
 
   Docker Networking       SELESAI                 backend/frontend network, service
-                    [text](<c:/Users/ADI SURYADI/Downloads/Progress_Pembelajaran_Docker_Compose.md>)                              discovery, DB via `db:5432`,
-                                                  DNS/network troubleshooting
+                                                  discovery, DB via `db:5432`,
+                                                  DNS/network troubleshooting,
+                                                  Network Isolation (Nginx->API OK,
+                                                  API->DB OK, Nginx->DB Blocked)
+
+  Automated Testing       SELESAI                 `pytest` di dalam container dengan
+  (Pytest)                                        `cache_dir=/tmp/.pytest_cache` →
+                                                  2 passed (health check & read items)
+
+  JWT / OAuth2 Auth       SELESAI                 Endpoint `/token` (login), token
+                                                  generation & validation via
+                                                  `python-jose`, proteksi `POST /items/`
 
   Nginx Reverse Proxy     SELESAI                 `curl http://localhost:8080/health` →
                                                   `200 OK`
+
 
   CRUD API Testing        SELESAI                 GET/POST/PUT/DELETE `/items/` + 422
                                                   dan 404

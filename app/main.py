@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
 
 # Import our own modules
 from . import crud, models, schemas
 from .database import SessionLocal, engine
+from .auth import create_access_token, get_current_user
 
 # Create the database tables on startup
 models.Base.metadata.create_all(bind=engine)
@@ -19,9 +21,25 @@ def get_db():
     finally:
         db.close()
 
-# CREATE - POST /items/
-@app.post("/items/", response_model=schemas.Item, summary="Create a new item", tags=["Items"])
-def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
+# AUTH - POST /token (Login)
+@app.post("/token", tags=["Authentication"])
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username != "admin" or form_data.password != "secretpassword":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username atau password salah"
+        )
+    
+    access_token = create_access_token(data={"sub": form_data.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# CREATE - POST /items/ (Terproteksi Auth Token)
+@app.post("/items/", response_model=schemas.Item, status_code=201, summary="Create a new item", tags=["Items"])
+def create_item(
+    item: schemas.ItemCreate, 
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """
     Create a new item with all the information:
 
@@ -83,12 +101,19 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": f"Item {item_id} deleted successfully"}
 
-
 # Root endpoint
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Item CRUD API. Go to /docs to see the interactive documentation."}
 
+import os
+
 @app.get("/health")
 def health_check():
-    return {"message": "OK"}
+    return {
+        "status": "OK - RELOADED LIVE",
+        "environment": "development",
+        "served_by": os.getenv("HOSTNAME", "unknown_container")
+    }
+
+

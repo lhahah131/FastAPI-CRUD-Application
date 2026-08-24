@@ -148,6 +148,73 @@ Visit: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ---
 
+## 🐳 Docker Compose & Network Architecture
+
+Project ini dirancang dengan arsitektur multi-container dan isolasi jaringan bertingkat (Layered Network Isolation):
+
+```
+       [ Host / Browser ]
+               │
+               ▼  (Port 8080 / 9000 -> 80)
+        ┌──────────────┐
+        │    nginx     │ (Reverse Proxy)
+        └──────┬───────┘
+               │  [ frontend network ]
+               ▼  (Internal Port 8000)
+        ┌──────────────┐
+        │     api      │ (FastAPI App)
+        └──────┬───────┘
+               │  [ backend network (internal: true) ]
+               ▼  (Internal Port 5432)
+        ┌──────────────┐
+        │      db      │ (PostgreSQL 15)
+        └──────────────┘
+```
+
+### 1. Menjalankan via Docker Compose
+
+- **Mode Standar (Nginx + FastAPI + PostgreSQL):**
+  ```bash
+  docker compose up -d --build
+  ```
+  Akses API melalui Nginx Reverse Proxy di: [http://localhost:8080/docs](http://localhost:8080/docs) atau endpoint health: [http://localhost:8080/health](http://localhost:8080/health).
+
+- **Mode Debug (Menjalankan Adminer DB UI):**
+  ```bash
+  docker compose --profile debug up -d
+  ```
+  Akses Adminer di: [http://localhost:8001](http://localhost:8001).
+
+### 2. Konfigurasi Isolasi Jaringan (Network Isolation)
+
+Dalam [compose.yaml](file:///d:/contoh%20dokcer/FastAPI-CRUD-Application/compose.yaml), diterapkan dua network:
+- **`frontend`**: Jaringan jembatan publik antara `nginx` dan `api`.
+- **`backend` (`internal: true`)**: Jaringan internal khusus antara `api` dan `db`. Nginx tidak memiliki akses langsung ke network database.
+
+### 3. Pengujian & Verifikasi Network Isolation
+
+Pengujian dapat dijalankan langsung di terminal container:
+
+1. **Nginx ➜ API (Berhasil / 200 OK):**
+   ```bash
+   docker compose exec nginx wget -qO- http://api:8000/health
+   # Response: {"message":"OK"}
+   ```
+
+2. **API ➜ Database (Berhasil terhubung ke port 5432):**
+   ```bash
+   docker compose exec api python -c "import socket; s = socket.socket(); s.connect(('db', 5432)); print('DB Connected!')"
+   # Response: DB Connected!
+   ```
+
+3. **Nginx ➜ Database (Terisolasi / Blocked):**
+   ```bash
+   docker compose exec nginx ping -c 2 db
+   # Response: ping: bad address 'db' (DNS db tidak dikenali oleh nginx karena berada di network berbeda)
+   ```
+
+---
+
 ## 🚀 Next Steps & Production Readiness
 
 - **Switch to PostgreSQL:** Replace the SQLite connection string in `database.py` with your PostgreSQL URL (see `.env`).
@@ -159,3 +226,4 @@ Visit: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 ---
 
 **This starter gives you a professional foundation for building real-world FastAPI applications. Happy coding!**
+

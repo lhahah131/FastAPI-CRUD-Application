@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+ARG PYTHON_VERSION=3.12-slim
+FROM python:${PYTHON_VERSION}
 
 WORKDIR /app
 
@@ -8,6 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --timeout 100 --retries 10 -r requirements.txt
 
 COPY ./app ./app
+COPY test.py .
 RUN useradd --create-home --shell /usr/sbin/nologin appuser && \
     chown -R appuser:appuser /app
 
