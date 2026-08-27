@@ -35,6 +35,8 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run Pytest
+        env:
+          DATABASE_URL: sqlite:///./test.db
         run: |
           pytest test.py -v
 
