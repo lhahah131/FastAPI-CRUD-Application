@@ -5,10 +5,11 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  permision:
-    contents: read
-    pull-events: write
-    
+
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   # ========================================================
   # JOB 1: Test & Code Quality
@@ -60,10 +61,10 @@ jobs:
           exit-code: "0" # Ubah ke 1 jika ingin otomatis menggagalkan pipeline saat ada CVE
 
   # ========================================================
-  # JOB 3: Docker Build & Image Hardening Scan
+  # JOB 3: Docker Build, SARIF Scan & SBOM Generation
   # ========================================================
   docker-build-scan:
-    name: Docker Build & SBOM Generation
+    name: Docker Build, Security Scan & SBOM
     runs-on: ubuntu-latest
     needs: security-scan
 
@@ -82,13 +83,19 @@ jobs:
           load: true
           tags: fastapi-app:ci-test
 
-      - name: Scan Docker Image (Trivy)
+      - name: Scan Docker Image (Trivy SARIF)
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: "fastapi-app:ci-test"
-          format: "table"
-          severity: "CRITICAL"
-          exit-code: "0"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL"
+
+      - name: Upload Trivy Scan to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
 
       - name: Generate SBOM (Syft)
         uses: anchore/sbom-action@v0
@@ -102,21 +109,3 @@ jobs:
         with:
           name: sbom-cyclonedx
           path: sbom-ci.json
-
-      - name: Scan Docker Image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: "fastapi-app:ci-test"
-          format: "sarif"
-          output: "trivy-results.sarif"
-          severity: "HIGH,CRITICAL"
-
-      - name: Upload Trivy Scan to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: "trivy-results.sarif"
-
-      - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0
-        # ...
