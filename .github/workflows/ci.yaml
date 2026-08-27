@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Pytest
         run: |
-          pytest -v
+          pytest test.py -v
 
   # ========================================================
   # JOB 2: Security Scans (Secrets & Dependencies)
