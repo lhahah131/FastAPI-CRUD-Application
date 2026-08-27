@@ -5,7 +5,10 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-
+  permision:
+    contents: read
+    pull-events: write
+    
 jobs:
   # ========================================================
   # JOB 1: Test & Code Quality
@@ -99,3 +102,21 @@ jobs:
         with:
           name: sbom-cyclonedx
           path: sbom-ci.json
+
+      - name: Scan Docker Image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "fastapi-app:ci-test"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL"
+
+      - name: Upload Trivy Scan to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        # ...
