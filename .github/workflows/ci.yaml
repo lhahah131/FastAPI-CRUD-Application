@@ -2,9 +2,9 @@ name: FastAPI DevSecOps CI Pipeline
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "latihan" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "latihan" ]
 
 permissions:
   contents: read

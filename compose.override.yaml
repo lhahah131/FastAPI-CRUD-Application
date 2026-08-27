@@ -5,4 +5,8 @@ services:
       - DEBUG=true
   nginx:
     ports: !override
-      - "8080:80"
+      - "9080:80"
+  
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

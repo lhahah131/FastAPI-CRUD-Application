@@ -13,6 +13,10 @@ services:
           target: /app/app
         - action: rebuild
           path: ./requirements.txt
+        - action: rebuild
+          path: ./requirements-dev.txt
+    build:
+      target: development
 
   nginx:
     ports: !override
@@ -27,4 +31,4 @@ services:
     networks:
       - backend
     depends_on:
-      - db
+      - db

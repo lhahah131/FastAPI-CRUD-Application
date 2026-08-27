@@ -15,6 +15,7 @@ services:
       start_period: 10s
     build:
       context: .
+      target: production
       args:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.12-slim}
     expose:
@@ -38,11 +39,11 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
-      - seccomp=./seccomp-block/seccomp.json
+      - seccomp:./seccomp-block/seccomp.json
     cap_drop:
       - ALL
     cap_add:
-     - CHOWN
+      - CHOWN
 
     networks:
       - frontend
@@ -54,7 +55,7 @@ services:
     logging: *default-logging
     image: nginx:alpine
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1" ]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -76,12 +77,15 @@ services:
     restart: unless-stopped
     networks:
       - frontend
+      
     mem_limit: 128m
     cpus: "0.25"
+    security_opt:
+      - no-new-privileges:true
 
   db:
     logging: *default-logging
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-Composer} -d ${POSTGRES_DB:-latihan}" ]
       interval: 5s
@@ -94,8 +98,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-latihan}
     secrets:
       - db_password
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d:ro
@@ -103,6 +105,10 @@ services:
       - backend
     mem_limit: 768m
     cpus: "1.00"
+
+    security_opt:
+      - no-new-privileges:true
+
   adminer:
     image: adminer
     profiles:
@@ -125,5 +131,4 @@ networks:
 
 volumes:
   db_data:
-
 
